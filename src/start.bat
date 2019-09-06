@@ -1,5 +1,5 @@
 echo off
-title space for Windows
+title spacepi for Windows
 cls
 
 python3 main.py
