@@ -84,8 +84,8 @@ else:
 	coloredlogs.DEFAULT_LOG_FORMAT = '%(asctime)s %(levelname)s: %(message)s'
 
 coloredlogs.install(level=log_level)
-alexa_logger = logging.getLogger('alexapi')
-alexa_logger.setLevel(log_level)
+Space-Monkey-KD_logger = logging.getLogger('spacepi')
+Space-Monkey-KD_logger.setLevel(log_level)
 
 logger = logging.getLogger(__name__)
 
