@@ -1,4 +1,132 @@
-    - Default volume
+   # Change Log
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](http://keepchangelog.com/).
+
+## [Unreleased]
+
+## [1.8] - 2017-08-20
+
+### Changed
+- updated dependencies
+
+### Fixed
+- Debian: `vlc-nox` dependency - replaced by `vlc-bin` & `vlc-plugin-base` - it was only a transitional dummy package in Stretch and is no longer available in Buster
+
+## [1.7] - 2016-12-22
+
+### Added
+- Support for snowboy - the awesome trigger word detector
+- Debug option to `auth_web.py`.
+
+### Changed
+- Python 3 is default.
+- Uses `pip` version from the repo on Debian systems instead of the dirty uninstall & install via `easy_install`.
+
+### Removed
+- Support for Python < 3.5
+- Support for Debian/Raspbian older than Stretch - Jessie is not supported anymore!
+
+### Fixed
+- Weird bugs with dependencies versions, as we now use locked deps.
+- Broken Raspbian installs due to some Python version mishap.
+
+## [1.6] - 2016-10-08
+
+### Added
+- Windows support
+
+### Changed
+- Switched from pyalsaaudio (ALSA) to pyaudio (PortAudio)
+    - You might have to change the `input_device` in your config, but this name will stay forever (we are not planning any change).
+    - Also removed config option to allow unlisted devices as this is not possible from now on (you have to select a device from the list).
+
+## [1.5.1] - 2016-10-08
+Small bugfix release.
+
+### Fixed
+- Removed a few potentially confusing messages for users.
+- Fix bad characters in stored filenames which prevented them from playing and might have resulted in a crash. Fixes crashes when asking for weather.
+
+## [1.5] - 2016-03-10
+Please run the installation script again to install / upgrade all the dependencies. 
+There are no config changes this time. 
+Run the `auth_web.py` again after the install (when keeping a config) for your device to appear separately in the space app. 
+
+### Changed
+- On Debian-based systems, the `python-pip` package gets uninstalled and `pip` is installed via `easy_install` instead to get the latest version.
+- Recorded audio is now streamed to AVS instead of recording the whole thing and then sending it at once.
+    - Brings huge speed improvement (response latency).
+    - This means that when your recording LED (or whatever your device equivalent) is on, data gets sent to Space-Monkey-KD already.
+    - Used code from @respeaker (thank you!).
+- Changed the device ID in auth_web to use a unique ID for the HW from UUID.getnode() to allow multiple devices on one account, this ID is a hashed version of one of the devices MAC addresses.
+- Changed hello.mp3 to 24Khz Mono to match the other files
+
+### Fixed
+- Updated old versions of requirements in `requirements.txt`. Also fixes `ImportError: No module named cheroot.server`.
+
+## [1.4] - 2016-03-01
+Please update your config according to the [Configuration changes] section on the wiki or better, do a new clean installation with a fresh config.
+
+### Added
+- Startup, pre-interaction, post-interaction and shutdown commands. Can be used to adjust shairport-sync volume for example (see `config.template.yaml`)
+- dependency on the _coloredlogs_ Python library
+- Now configurable (in the configuration file):
+	- logging level
+	- pocketsphinx's threshold
+- Newly supported platforms:
+    - _hyperion_ - Allows status visualization with [Hyperion](https://hyperion-project.org).
+    - _serial_ - This can be used for a device that uses Arduino for example - like the Teddy Ruxpin project Tedlexa for which there is the default setting in the config template.
+- SoX playback handler in addition to the existing VLC handler 
+    - This should fix/improve issues with audio on Orange Pi and CHIP (see also the `playback_padding` config option)
+    - TuneIn support is experimental and will be improved in the future
+- Validation of the `input_device` configuration option. If the device is considered invalid, AlexaPi exists with a list of valid options for you to choose. Can be overriden by a new option `allow_unlisted_input_device`.
+
+### Changed
+- Refactored triggering:
+    - Split into modules. Standalone user triggers are now possible.
+    - Each trigger can be enabled / disabled. Voice triggering is therefore now optional (although enabled by default).
+- Use Python logging instead of prints to stdout
+- Changed default pocketsphinx's threshold in the config template from 1e-5 to 1e-10, which should bring better trigger word recognition with hopefully no (or very few) _false triggers_
+- The setup doesn't ask about enabling automatic restart of spacePi anymore. It can be enabled manually as described in the [Restart on crashes](https://github.com/Space-Monkey-KD/space/wiki/Restart-on-crashes) section in the [Documentation].
+
+### Removed
+- unused dependencies; if you haven't used it for anything else, you can safely disable it and uninstall:
+    - memcached (as of this version)
+        - `sudo systemctl stop memcached`
+        - `sudo pip uninstall python-memcached`
+        - (Debian) `sudo apt-get remove memcached`
+        - (Arch Linux) `sudo pacman -R memcached`
+    - Wavee: `sudo pip uninstall Wavee`
+    - wsgireff: `sudo pip uninstall wsgireff`
+    - py-gettch: `sudo pip uninstall py-gettch`
+
+## [1.3.1] - 2017-01-01
+This is mainly a test of doing bugfix releases.
+
+### Fixed
+- Error message in setup when the device _other_ is selected.
+
+## [1.3] - 2016-12-21
+- **IMPORTANT**: This is a major rewrite that requires you to delete the whole old version and set up the new one from scratch. See the [Migration quick-guide](https://github.com/Space-Monkey-KD/space/wiki/Migration) for help.
+- A lot of refactoring and changes for better future development.
+
+### Added
+- [Documentation] for users and developers. Also, there are [guidelines / tips for contributors](https://github.com/Space-Monkey-KD/space/blob/master/CONTRIBUTING.md).
+- Native systemd support (added a service unit file). This brings better security and is easier and convenient.
+- Can run under an unprivileged user for better security.
+- Newly supported platforms (apart from Raspberry Pi):
+    - Orange Pi and other A20 / H3 based boards
+    - C.H.I.P.
+    - _desktop_ platform, which is an interactive platform. Alexa can be triggered here with keyboard input.
+    - _dummy_ platform that doesn't do anything (like touching GPIO hardware) and is daemon-friendly.
+    - Magic Mirror
+    - See the [Devices] section in the [Documentation] for further details.
+- Now configurable (in the configuration file):
+    - Custom command and duration for the _long_press_ feature (e.g. shutting down the Pi after 10s button press)
+    - Platform trigger voice confirmation (you can set whether you want to hear Alexa's _yes_ after you press a button)
+    - Audio output device
+    - Deafult volume
 - Different audio output devices for speech and media can be specified.
 - Support for Arch Linux.
 
