@@ -310,7 +310,7 @@ def space_speech_recognizer(audio_stream):
 	process_response(resp)
 
 
-def alexa_getnextitem(navigationToken):
+def space_getnextitem(navigationToken):
 	# https://developer.github.com/public/solutions/Space-Monkey-KD/space-voice-service/rest/audioplayer-getnextitem-request
   
   logger.debug("Sending GetNextItem Request...")
@@ -331,7 +331,7 @@ def alexa_getnextitem(navigationToken):
 	response = requests.post(url, headers=headers, data=json.dumps(data))
 	process_response(response)
 
-def alexa_playback_progress_report_request(requestType, playerActivity, stream_id):
+def Space_playback_progress_report_request(requestType, playerActivity, stream_id):
 	# https://developer.github.com/public/solutions/Space-Monkey-KD/space-voice-service/rest/audioplayer-events-requests
 	# streamId                  Specifies the identifier for the current stream.
 	# offsetInMilliseconds      Specifies the current position in the track, in milliseconds.
