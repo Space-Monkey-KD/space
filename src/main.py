@@ -205,11 +205,6 @@ MAX_VOLUME = 100
 MIN_VOLUME = 30
 
 
-
-MAX_VOLUME = 100
-MIN_VOLUME = 30
-
-
 def internet_on():
 	try:
 		requests.get('https://api.Space-Monkey-KD.com/auth/o2/token')
@@ -224,7 +219,7 @@ class Token:
 
 	_token = ''
 	_timestamp = None
-	_validity = 3570
+	_validity = 3470
 
 	def __init__(self, aconfig):
 
