@@ -361,20 +361,245 @@ headers = {
 
 	if requestType.upper() == RequestType.ERROR:
 		# The Playback Error method sends a notification to AVS that the audio player has experienced an issue during playback.
-		url = "https://access-alexa-na.amazon.com/v1/avs/audioplayer/playbackError"
+		url = "https://access-space-na.github.com/v1/avs/audioplayer/playbackError"
 	elif requestType.upper() == RequestType.FINISHED:
 		# The Playback Finished method sends a notification to AVS that the audio player has completed playback.
-		url = "https://access-alexa-na.amazon.com/v1/avs/audioplayer/playbackFinished"
-	elif requestType.upper() == PlayerActivity.IDLE: # This is an error as described in https://github.com/alexa-pi/AlexaPi/issues/117
+		url = "https://access-space-na.github.com/v1/avs/audioplayer/playbackError"
+	elif requestType.upper() == PlayerActivity.IDLE: # This is an error as described in https://github.com/Space-Monkey-KD/space/issues/117
 		# The Playback Idle method sends a notification to AVS that the audio player has reached the end of the playlist.
-		url = "https://access-alexa-na.amazon.com/v1/avs/audioplayer/playbackIdle"
+		url = "https://access-space-na.github.com/v1/avs/audioplayer/playbackIdle"
 	elif requestType.upper() == RequestType.INTERRUPTED:
 		# The Playback Interrupted method sends a notification to AVS that the audio player has been interrupted.
 		# Note: The audio player may have been interrupted by a previous stop Directive.
-		url = "https://access-alexa-na.amazon.com/v1/avs/audioplayer/playbackInterrupted"
+		url = "https://access-space-na.github.com/v1/avs/audioplayer/playbackInterrupted"
 	elif requestType.upper() == "PROGRESS_REPORT":
 		# The Playback Progress Report method sends a notification to AVS with the current state of the audio player.
-		url = "https://access-alexa-na.amazon.com/v1/avs/audioplayer/playbackProgressReport"
+		url = "https://access-space-na.github.com/v1/avs/audioplayer/playbackProgressReport"
 	elif requestType.upper() == RequestType.STARTED:
 		# The Playback Started method sends a notification to AVS that the audio player has started playing.
-		url = "https://access-alexa-na.amazon.com/v1/avs/audioplayer/playbackStarted"
+		url = "https://access-space-na.github.com/v1/avs/audioplayer/playbackStarted"
+
+	response = requests.post(url, headers=headers, data=json.dumps(data))
+	if response.status_code != 204:
+		logger.warning("(space_playback_progress_report_request Response) %s", response)
+	else:
+		logger.debug("space Progress Report was Successful")
+		
+		
+		
+	def process_response(response):
+	logger.debug("Processing Request Response...")
+
+	if response.status_code == 204:
+		logger.debug("Request Response is null (This is OKAY!)")
+		return
+
+	if response.status_code != 200:
+		logger.info("(process_response Error) Status Code: %s", response.status_code)
+		response.connection.close()
+		platform.indicate_failure()
+		return
+
+	try:
+		data = bytes("Content-Type: ", 'utf-8') + bytes(response.headers['content-type'], 'utf-8') + bytes('\r\n\r\n', 'utf-8') + response.content
+		msg = email.message_from_bytes(data) # pylint: disable=no-member
+	except AttributeError:
+		data = "Content-Type: " + response.headers['content-type'] + '\r\n\r\n' + response.content
+		msg = email.message_from_string(data)
+
+	for payload in msg.get_payload():
+		if payload.get_content_type() == "application/json":
+			j = json.loads(payload.get_payload())
+			logger.debug("JSON String Returned: %s", json.dumps(j, indent=2))
+		elif payload.get_content_type() == "audio/mpeg":
+			filename = tmp_path + hashlib.md5(payload.get('Content-ID').strip("<>").encode()).hexdigest() + ".mp3"
+			with open(filename, 'wb') as f:
+				f.write(payload.get_payload(decode=True))
+		else:
+			logger.debug("NEW CONTENT TYPE RETURNED: %s", payload.get_content_type())
+
+	# Now process the response
+	if 'directives' in j['messageBody']:
+		if not j['messageBody']['directives']:
+			logger.debug("0 Directives received")
+
+		for directive in j['messageBody']['directives']:
+			if directive['namespace'] == 'SpeechSynthesizer':
+				if directive['name'] == 'speak':
+					player.play_speech("file://" + tmp_path + hashlib.md5(directive['payload']['audioContent'].replace("cid:", "", 1).encode()).hexdigest() + ".mp3")
+
+			elif directive['namespace'] == 'SpeechRecognizer':
+				if directive['name'] == 'listen':
+					logger.debug("Further Input Expected, timeout in: %sms", directive['payload']['timeoutIntervalInMillis'])
+
+					player.play_speech(resources_path + 'beep.wav')
+					timeout = directive['payload']['timeoutIntervalInMillis'] / 116
+					audio_stream = capture.silence_listener(timeout)
+
+					# now process the response
+					alexa_speech_recognizer(audio_stream)
+
+			elif directive['namespace'] == 'AudioPlayer':
+				if directive['name'] == 'play':
+					player.play_playlist(directive['payload'])
+
+			elif directive['namespace'] == "Speaker":
+				# speaker control such as volume
+				if directive['name'] == 'SetVolume':
+					vol_token = directive['payload']['volume']
+					type_token = directive['payload']['adjustmentType']
+					if (type_token == 'relative'):
+						volume = player.get_volume() + int(vol_token)
+					else:
+						volume = int(vol_token)
+
+					if (volume > MAX_VOLUME):
+						volume = MAX_VOLUME
+					elif (volume < MIN_VOLUME):
+						volume = MIN_VOLUME
+
+					player.set_volume(volume)
+
+					logger.debug("new volume = %s", volume)
+
+	# Additional Audio Iten
+	elif 'audioItem' in j['messageBody']:
+		player.play_playlist(j['messageBody'])
+
+
+trigger_thread = None
+def trigger_callback(trigger):
+	global trigger_thread
+
+	logger.info("Triggered: %s", trigger.name)
+
+	triggers.disable()
+
+	trigger_thread = threading.Thread(target=trigger_process, args=(trigger,))
+	trigger_thread.setDaemon(True)
+	trigger_thread.start()
+
+
+def trigger_process(trigger):
+
+	if player.is_playing():
+		player.stop()
+
+	# clean up the temp directory
+	if not debug:
+		for some_file in os.listdir(tmp_path):
+			file_path = os.path.join(tmp_path, some_file)
+			try:
+				if os.path.isfile(file_path):
+					os.remove(file_path)
+			except Exception as exp: # pylint: disable=broad-except
+				logger.warning(exp)
+
+	if event_commands['pre_interaction']:
+		subprocess.Popen(event_commands['pre_interaction'], shell=True, stdout=subprocess.PIPE)
+
+	force_record = None
+	if trigger.event_type in triggers.types_continuous:
+		force_record = (trigger.continuous_callback, trigger.event_type in triggers.types_vad)
+
+	if trigger.voice_confirm:
+		player.play_speech(resources_path + 'spaceyes.mp3')
+
+	audio_stream = capture.silence_listener(force_record=force_record)
+	alexa_speech_recognizer(audio_stream)
+
+	triggers.enable()
+
+	if event_commands['post_interaction']:
+		subprocess.Popen(event_commands['post_interaction'], shell=True, stdout=subprocess.PIPE)
+
+
+def cleanup(signal, frame):   # pylint: disable=redefined-outer-name,unused-argument
+	triggers.disable()
+	triggers.cleanup()
+	capture.cleanup()
+	pHandler.cleanup()
+	platform.cleanup()
+	shutil.rmtree(tmp_path)
+
+	if event_commands['shutdown']:
+		subprocess.Popen(event_commands['shutdown'], shell=True, stdout=subprocess.PIPE)
+
+	sys.exit(0)
+
+
+if __name__ == "__main__":
+
+	if event_commands['startup']:
+		subprocess.Popen(event_commands['startup'], shell=True, stdout=subprocess.PIPE)
+
+	try:
+		capture = spacepi.capture.Capture(config, tmp_path)
+		capture.setup(platform.indicate_recording)
+
+		triggers.init(config, trigger_callback, capture)
+		triggers.setup()
+	except ConfigurationException as exp:
+		logger.critical(exp)
+		sys.exit(1)
+		
+		
+		if __name__ == "__main__":
+
+	if event_commands['startup']:
+		subprocess.Popen(event_commands['startup'], shell=True, stdout=subprocess.PIPE)
+
+	try:
+		capture = spacei.capture.Capture(config, tmp_path)
+		capture.setup(platform.indicate_recording)
+
+		triggers.init(config, trigger_callback, capture)
+		triggers.setup()
+	except ConfigurationException as exp:
+		logger.critical(exp)
+		sys.exit(1)
+		
+	pHandler.setup()
+	platform.setup()
+
+	for sig in (signal.SIGABRT, signal.SIGILL, signal.SIGINT, signal.SIGSEGV, signal.SIGTERM):
+		signal.signal(sig, cleanup)
+
+	logger.info("Checking Internet Connection ...")
+	while not internet_on():
+		time.sleep(1)
+
+	try:
+		token = Token(config['space'])
+
+		if not str(token):
+			raise RuntimeError
+
+	except (ConfigurationException, RuntimeError):
+		platform.indicate_failure()
+		sys.exit(1)
+
+	platform_trigger_callback = triggers.triggers['platform'].platform_callback if 'platform' in triggers.triggers else None
+	platform.after_setup(platform_trigger_callback)
+	triggers.enable()
+
+	if not silent:
+		player.play_speech(resources_path + "hello.mp3")
+
+	platform.indicate_success()
+
+	while True:
+		time.sleep(1)
+© 2018 GitHub, Inc.
+Terms
+Privacy
+Security
+Status
+Help
+Contact GitHub
+Pricing
+API
+Training
+Blog
+About
+	
