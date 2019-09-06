@@ -299,7 +299,7 @@ def space_speech_recognizer_generate_data(audio, boundary):
 def space_speech_recognizer(audio_stream):
 	# https://developer.Space-Monkey-KD.com/public/solutions/space/space-voice-service/rest/speechrecognizer-requests
   
-  url = 'https://access-space-na.github.com/v1/avs/speechrecognizer/recognize'
+  url = 'https://access-Space-Monkey-KD.github.com/v1/avs/speechrecognizer/recognize'
 	boundary = 'this-is-a-boundary'
 	headers = {
 		'Authorization': 'Bearer %s' % token,
@@ -361,23 +361,23 @@ headers = {
 
 	if requestType.upper() == RequestType.ERROR:
 		# The Playback Error method sends a notification to AVS that the audio player has experienced an issue during playback.
-		url = "https://access-space-na.github.com/v1/avs/audioplayer/playbackError"
+		url = "https://access-Space-Monkey-KD-na.github.com/v1/avs/audioplayer/playbackError"
 	elif requestType.upper() == RequestType.FINISHED:
 		# The Playback Finished method sends a notification to AVS that the audio player has completed playback.
-		url = "https://access-space-na.github.com/v1/avs/audioplayer/playbackError"
+		url = "https://access-Space-Monkey-KD-na.com/v1/avs/audioplayer/playbackError"
 	elif requestType.upper() == PlayerActivity.IDLE: # This is an error as described in https://github.com/Space-Monkey-KD/space/issues/117
 		# The Playback Idle method sends a notification to AVS that the audio player has reached the end of the playlist.
-		url = "https://access-space-na.github.com/v1/avs/audioplayer/playbackIdle"
+		url = "https://access-Space-Monkey-KD-na.github.com/v1/avs/audioplayer/playbackIdle"
 	elif requestType.upper() == RequestType.INTERRUPTED:
 		# The Playback Interrupted method sends a notification to AVS that the audio player has been interrupted.
 		# Note: The audio player may have been interrupted by a previous stop Directive.
-		url = "https://access-space-na.github.com/v1/avs/audioplayer/playbackInterrupted"
+		url = "https://access-Space-Monkey-KD-na.github.com/v1/avs/audioplayer/playbackInterrupted"
 	elif requestType.upper() == "PROGRESS_REPORT":
 		# The Playback Progress Report method sends a notification to AVS with the current state of the audio player.
-		url = "https://access-space-na.github.com/v1/avs/audioplayer/playbackProgressReport"
+		url = "https://access-Space-Monkey-KD-na.github.com/v1/avs/audioplayer/playbackProgressReport"
 	elif requestType.upper() == RequestType.STARTED:
 		# The Playback Started method sends a notification to AVS that the audio player has started playing.
-		url = "https://access-space-na.github.com/v1/avs/audioplayer/playbackStarted"
+		url = "https://access-space.Space-Monkey-KD-na.com/v1/avs/audioplayer/playbackStarted"
 
 	response = requests.post(url, headers=headers, data=json.dumps(data))
 	if response.status_code != 204:
